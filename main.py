@@ -4,14 +4,19 @@ import constants
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+# ------------------------------- CONSTANTS -------------------------------
+REDIRECT_URI = "http://localhost:8000"
+SCOPE = "playlist-modify-private"
+BILLBOARD_URL = "https://www.billboard.com/charts/hot-100"
+
+
 # Connect Spotify with Spotipy
 def spotify_connection():
 
     sp = spotipy.Spotify(
         auth_manager=SpotifyOAuth(
-            username = constants.USER_ID,
-            scope=constants.SCOPE,
-            redirect_uri=constants.REDIRECT_URI,
+            scope=SCOPE,
+            redirect_uri=REDIRECT_URI,
             client_id=constants.SPOTIFY_CLIENT_ID,
             client_secret = constants.SPOTIFY_CLIENT_SECRET,
             show_dialog = True,
@@ -21,9 +26,9 @@ def spotify_connection():
     return sp
 
 # Create a new playlist
-def create_new_playlist(sp,playlist_name):
+def create_new_playlist(sp,playlist_name,user_id):
     sp2 = sp.user_playlist_create(
-        user=constants.USER_ID,
+        user=user_id,
         name=playlist_name,
         public=False,
         collaborative=False,
@@ -48,18 +53,17 @@ def add_songs_to_playlist(sp,playlist_id,song_list,date):
 
 # Scrape data from www.billboard.com
 def scrape(date = ""):
-    BILLBOARD_URL = f"{constants.BILLBOARD_URL}/{date}"
-    response = requests.get(BILLBOARD_URL)
+    billboard_url = f"{BILLBOARD_URL}/{date}" # Date by default is blank , getting the latest top 100
+    response = requests.get(billboard_url)
     billboard_data = response.text
-    soup = BeautifulSoup(billboard_data, 'html.parser')
-    list_of_song_names = soup.find_all("span", class_="chart-element__information__song text--truncate color--primary")
-    print(list_of_song_names)
+    soup = BeautifulSoup(billboard_data, 'html.parser') # Parse data using beautiful soup
+    list_of_song_names = soup.find_all("span", class_="chart-element__information__song text--truncate color--primary") # Extract song names
     song_names = []
-    for song in list_of_song_names:
+    for song in list_of_song_names: # Store all song names in a list
         name = song.getText()
         song_names.append(name)
 
-    return song_names
+    return song_names # Return song names
 
 def main():
     try:
@@ -71,9 +75,10 @@ def main():
     get_user_date = input(
         "Please enter a date in the past in the form of YYYY-MM-DD\nto create a spotify playlist of the top 100 songs in the given date:\n")
     song_list = scrape(get_user_date)[::-1]
-    playlist_name = f"Music Time Machine: {get_user_date}"
-    playlist_id = create_new_playlist(sp, playlist_name)
-    add_songs_to_playlist(sp, playlist_id, song_list, get_user_date)
+    playlist_name = f"Music Time Machine: {get_user_date}" # Name the playlist
+    user_id = sp.current_user()['id'] # Get the user_id
+    playlist_id = create_new_playlist(sp, playlist_name,user_id) # Create the playlist
+    add_songs_to_playlist(sp, playlist_id, song_list, get_user_date) # Add songs to the playlist
 
 if __name__ == "__main__":
     main()
